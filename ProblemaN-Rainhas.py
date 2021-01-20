@@ -1,5 +1,8 @@
 import sys
 from random import randint
+from random import uniform
+from math import exp
+
 
 # O tabuleiro será representado por uma lista de tamanho = "número de rainhas". Cada elemento da lista poderá ir de zero há "número de rainhas"
 def criaTabuleiro(numeroDeRainhas):
@@ -29,6 +32,16 @@ def recuperaVizinhosDeTabulero(tabuleiro):
 
     return vizinhosDeTabuleiro
 
+#Retorna um vizinho alearório dado um tabuleiro
+def buscaVizinhoAleatorio(tabuleiro):
+    vizinhos = recuperaVizinhosDeTabulero(tabuleiro)
+    vizinhoAleatorio = vizinhos[randint(0,len(tabuleiro))]
+    print("O vizinho aleatório retornado será:")
+    print(vizinhoAleatorio)
+    return vizinhoAleatorio
+
+
+
 # Como a heurística é baseada em números de ataques. Esta função retorna quantos ataques são possíveis no tabuleiro
 def buscarNumeroDeAtaquesNoTabuleiro(tabuleiro):
     numeroDeAtaques = buscarNumeroDeAtaquesNaHorizontal(tabuleiro) + buscarNumeroDeAtaquesNoNordeste(tabuleiro) + buscarNumeroDeAtaquesNoSudeste(tabuleiro) 
@@ -39,8 +52,6 @@ def buscarNumeroDeAtaquesNoTabuleiro(tabuleiro):
 # Para cada rainha no tabuleiro, busca quantos ataques são possíveis na horizontal
 def buscarNumeroDeAtaquesNaHorizontal(tabuleiro):
     return buscarNumeroDeAtaquesNaDireita(tabuleiro) 
-    
-'''+ buscarNumeroDeAtaquesNaEsquerda(tabuleiro)'''
 
 # Para cada rainha no tabuleiro, busca quantos ataques são possíveis
 def buscarNumeroDeAtaquesNaDireita(tabuleiro):
@@ -55,20 +66,8 @@ def buscarNumeroDeAtaquesNaDireita(tabuleiro):
                 numeroDeAtaques += 1 
                 break           
     return numeroDeAtaques
-'''
-def buscarNumeroDeAtaquesNaEsquerda(tabuleiro):
-    numeroDeAtaques = 0
 
-    for posicaoRainha in range (0,len(tabuleiro)):
-        for possivelAtaqueNaEsquerda in range (len(tabuleiro) - 1, posicaoRainha, -1):
-            if possivelAtaqueNaEsquerda == posicaoRainha:
-                continue 
-
-            elif tabuleiro[posicaoRainha] == tabuleiro[possivelAtaqueNaEsquerda]:
-                numeroDeAtaques += 1 
-                break
-    return numeroDeAtaques
-'''
+# Analisa o tabuleiro no sentido sudeste de cada rainha, contando o número de ataques possíveis
 def buscarNumeroDeAtaquesNoNordeste(tabuleiro):
     numeroDeAtaques = 0
 
@@ -82,6 +81,7 @@ def buscarNumeroDeAtaquesNoNordeste(tabuleiro):
                 break
     return numeroDeAtaques
 
+# Analisa o tabuleiro no sentido sudeste de cada rainha, contando o número de ataques possíveis
 def buscarNumeroDeAtaquesNoSudeste(tabuleiro):
     numeroDeAtaques = 0
 
@@ -94,34 +94,8 @@ def buscarNumeroDeAtaquesNoSudeste(tabuleiro):
                 numeroDeAtaques += 1
                 break
     return numeroDeAtaques
-'''
-def buscarNumeroDeAtaquesNoNoroeste(tabuleiro):
-    numeroDeAtaques = 0
 
-    for posicaoRainha in range ( 0, len(tabuleiro)):
-        mapeiaDiagonal = tabuleiro[posicaoRainha]
-        for posicaoHorizontal in range (posicaoRainha - 1, -1, -1):
-            mapeiaDiagonal -= 1
-
-            if tabuleiro[posicaoHorizontal] == mapeiaDiagonal:
-                numeroDeAtaques += 1
-                break
-    return numeroDeAtaques
-
-def buscarNumeroDeAtaquesNoSudoeste(tabuleiro):
-    numeroDeAtaques = 0
-
-    for posicaoRainha in range ( 0, len(tabuleiro)):
-        mapeiaDiagonal = tabuleiro[posicaoRainha]
-        for posicaoHorizontal in range (posicaoRainha - 1, -1, -1):
-            mapeiaDiagonal += 1
-
-            if tabuleiro[posicaoHorizontal] == mapeiaDiagonal:
-                numeroDeAtaques += 1
-                break
-    return numeroDeAtaques
-'''
-
+#Entre um conjunto de tabuleiro, retorna o tabuleiro com a melhor heurística
 def buscarMelhorVizinho( vizinhos ):
     melhorVizinho = []
     melhorHeuristica = sys.maxsize
@@ -139,8 +113,8 @@ def buscarMelhorVizinho( vizinhos ):
     return [melhorVizinho, melhorHeuristica]
 
 
-
-def simuladorProblemaN_Rainhas(numeroDeRainhas):
+#Simula o problema de N_Rainhas usando Hill-climbing
+def simuladorProblemaN_RainhasComHillClimbing(numeroDeRainhas):
     tabuleiro = criaTabuleiro(numeroDeRainhas)
     
     tabuleiroAtual = tabuleiro
@@ -170,7 +144,44 @@ def simuladorProblemaN_Rainhas(numeroDeRainhas):
 
     return tabuleiroAtual
 
+#Simula o problema de N_Rainhas usando SimulatedAnnealing
+def simuladorProblemaN_RainhasSimulatedAnnealing(numeroDeRainhas, maximoDeIteracoes,temperaturaInicial, alpha):
+    tabuleiro = criaTabuleiro(numeroDeRainhas)
+     
+    temperaturaFinal = 0.1
+    tabuleiroAtual = tabuleiro
+    solucao = tabuleiroAtual
+
+    temperaturaAtual = temperaturaInicial
+    
+    for i in range(1,maximoDeIteracoes):
+        if(temperaturaAtual<temperaturaFinal):
+            break
+
+        vizinhoAleatorio = buscaVizinhoAleatorio(solucao)
+        
+        diferrencaDeCusto = buscarNumeroDeAtaquesNoTabuleiro(tabuleiroAtual) - buscarNumeroDeAtaquesNoTabuleiro(vizinhoAleatorio)
+
+        if(diferrencaDeCusto < 0):
+            tabuleiroAtual = vizinhoAleatorio
+            if(buscarNumeroDeAtaquesNoTabuleiro(vizinhoAleatorio) <= buscarNumeroDeAtaquesNoTabuleiro(solucao)):
+                solucao = vizinhoAleatorio
+        else:
+            if(uniform(0,1) < exp(-(diferrencaDeCusto / temperaturaAtual))):
+                tabuleiroAtual = vizinhoAleatorio
+                temperaturaAtual = temperaturaAtual * alpha
+    
+    print("A solução encontrad foi:")
+    print(solucao)
+    print("Com a heurística: ")
+    print(buscarNumeroDeAtaquesNoTabuleiro(solucao))
+    return solucao
+                
+simuladorProblemaN_RainhasSimulatedAnnealing(4,5000,900,0.01)
+
 #simuladorProblemaN_Rainhas(8)
 
-buscarNumeroDeAtaquesNoTabuleiro([1,1,3,3,4,3,1,1])
+#buscarNumeroDeAtaquesNoTabuleiro([1,1,3,3,4,3,1,1])
+
+#buscaVizinhoAleatorio([1,1,3,3,4,3,1,1])
 
