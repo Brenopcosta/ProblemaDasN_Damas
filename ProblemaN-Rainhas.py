@@ -27,18 +27,15 @@ def recuperaVizinhosDeTabulero(tabuleiro):
             vizinho[identificadorDaRainha] = posicaoDaRainha
             vizinhosDeTabuleiro.append(vizinho)
 
-    print("Nesta iteração, o tabuleiro possui os seguintes vizinhos")
-    print(vizinhosDeTabuleiro)
-
     return vizinhosDeTabuleiro
 
 #Retorna um vizinho alearório dado um tabuleiro
 def buscaVizinhoAleatorio(tabuleiro):
     vizinhos = recuperaVizinhosDeTabulero(tabuleiro)
     vizinhoAleatorio = vizinhos[randint(0,len(tabuleiro))]
-    print("O vizinho aleatório retornado será:")
-    print(vizinhoAleatorio)
-    return vizinhoAleatorio
+    #print("O vizinho aleatório retornado será:")
+    #print(vizinhoAleatorio)
+    return [vizinhoAleatorio, len(vizinhos)]
 
 
 
@@ -67,7 +64,7 @@ def buscarNumeroDeAtaquesNaDireita(tabuleiro):
                 break           
     return numeroDeAtaques
 
-# Analisa o tabuleiro no sentido sudeste de cada rainha, contando o número de ataques possíveis
+# Analisa o tabuleiro no sentido nordeste de cada rainha, contando o número de ataques possíveis
 def buscarNumeroDeAtaquesNoNordeste(tabuleiro):
     numeroDeAtaques = 0
 
@@ -96,21 +93,47 @@ def buscarNumeroDeAtaquesNoSudeste(tabuleiro):
     return numeroDeAtaques
 
 #Entre um conjunto de tabuleiro, retorna o tabuleiro com a melhor heurística
-def buscarMelhorVizinho( vizinhos ):
-    melhorVizinho = []
-    melhorHeuristica = sys.maxsize
+def buscarMelhorVizinhoAleatorio( tabuleiro, vizinhos ):
+    melhorVizinho = tabuleiro
+    melhorHeuristica = buscarNumeroDeAtaquesNoTabuleiro(tabuleiro)
+    
+    melhoresVizinhos = []
+
+    for vizinho in vizinhos :
+        heuristicaVizinho = buscarNumeroDeAtaquesNoTabuleiro(vizinho)
+        if heuristicaVizinho < melhorHeuristica:
+            melhorHeuristica = heuristicaVizinho
+            melhorVizinho = vizinho
+            melhoresVizinhos = []
+
+        if  heuristicaVizinho == melhorHeuristica : 
+            melhoresVizinhos.append([vizinho,heuristicaVizinho])
+
+    melhorVizinhoAleatorio = melhoresVizinhos[randint(0, len(melhoresVizinhos) - 1)]
+
+    print("O melhor vizinho encontrado foi:")
+    print(melhorVizinhoAleatorio[0])
+    print("Com a heurística de valor: ")
+    print(melhorVizinhoAleatorio[1])
+    return [melhorVizinhoAleatorio[0], melhorVizinhoAleatorio[1], len(vizinhos)]
+
+#Entre um conjunto de tabuleiro, retorna o tabuleiro com a melhor heurística
+def buscarPrimeroMelhorVizinho(tabuleiro, vizinhos ):
+    melhorVizinho = tabuleiro
+    melhorHeuristica = buscarNumeroDeAtaquesNoTabuleiro(tabuleiro)
     
     for vizinho in vizinhos :
         heuristicaVizinho = buscarNumeroDeAtaquesNoTabuleiro(vizinho)
         if heuristicaVizinho < melhorHeuristica:
             melhorHeuristica = heuristicaVizinho
             melhorVizinho = vizinho
+            break
 
-    print("O melhor vizinho encontrado foi:")
+    print("O primeiro melhor vizinho encontrado foi:")
     print(melhorVizinho)
     print("Com a heurística de valor: ")
     print(melhorHeuristica)
-    return [melhorVizinho, melhorHeuristica]
+    return [melhorVizinho, melhorHeuristica, len(vizinhos)]
 
 
 #Simula o problema de N_Rainhas usando Hill-climbing
@@ -118,12 +141,13 @@ def simuladorProblemaN_RainhasComHillClimbing(numeroDeRainhas):
     tabuleiro = criaTabuleiro(numeroDeRainhas)
     
     tabuleiroAtual = tabuleiro
-    solucao = []
     heuristicaAtual = sys.maxsize
     contadorDeHeuristicaRepetida = 0
+    numeroDeTabuleirosGerados = 0
     while(True):
 
-        melhorVizinhoComHeuristica = buscarMelhorVizinho(recuperaVizinhosDeTabulero(tabuleiroAtual))
+        melhorVizinhoComHeuristica = buscarPrimeroMelhorVizinho(tabuleiroAtual, recuperaVizinhosDeTabulero(tabuleiroAtual))
+        numeroDeTabuleirosGerados += melhorVizinhoComHeuristica[2]
         if heuristicaAtual == melhorVizinhoComHeuristica[1]:
             contadorDeHeuristicaRepetida += 1 
 
@@ -132,7 +156,7 @@ def simuladorProblemaN_RainhasComHillClimbing(numeroDeRainhas):
             tabuleiroAtual = melhorVizinhoComHeuristica[0]
             heuristicaAtual = melhorVizinhoComHeuristica[1]
 
-        if contadorDeHeuristicaRepetida > 10:
+        if contadorDeHeuristicaRepetida > 3:
             print("foi encontrado um ombro, terminando a execução...")
             break
         
@@ -142,46 +166,44 @@ def simuladorProblemaN_RainhasComHillClimbing(numeroDeRainhas):
             print(tabuleiroAtual)
             break
 
-    return tabuleiroAtual
+    return [tabuleiroAtual,heuristicaAtual , numeroDeTabuleirosGerados]
+
 
 #Simula o problema de N_Rainhas usando SimulatedAnnealing
 def simuladorProblemaN_RainhasSimulatedAnnealing(numeroDeRainhas, maximoDeIteracoes,temperaturaInicial, alpha):
     tabuleiro = criaTabuleiro(numeroDeRainhas)
      
-    temperaturaFinal = 0.1
     tabuleiroAtual = tabuleiro
     solucao = tabuleiroAtual
 
     temperaturaAtual = temperaturaInicial
     
+    totalDeVizinhosGerados = 0
+
     for i in range(1,maximoDeIteracoes):
-        if(temperaturaAtual<temperaturaFinal):
+        if(temperaturaAtual <= 0):
             break
 
         vizinhoAleatorio = buscaVizinhoAleatorio(solucao)
-        
-        diferrencaDeCusto = buscarNumeroDeAtaquesNoTabuleiro(tabuleiroAtual) - buscarNumeroDeAtaquesNoTabuleiro(vizinhoAleatorio)
+        heuristicaVizinhoAleatorio = buscarNumeroDeAtaquesNoTabuleiro(vizinhoAleatorio[0])
+
+        diferrencaDeCusto =  heuristicaVizinhoAleatorio - buscarNumeroDeAtaquesNoTabuleiro(tabuleiroAtual)
+
+        totalDeVizinhosGerados += vizinhoAleatorio[1]
 
         if(diferrencaDeCusto < 0):
-            tabuleiroAtual = vizinhoAleatorio
-            if(buscarNumeroDeAtaquesNoTabuleiro(vizinhoAleatorio) <= buscarNumeroDeAtaquesNoTabuleiro(solucao)):
-                solucao = vizinhoAleatorio
+            tabuleiroAtual = vizinhoAleatorio[0]
+            if(buscarNumeroDeAtaquesNoTabuleiro(vizinhoAleatorio[0]) <= buscarNumeroDeAtaquesNoTabuleiro(solucao)):
+                solucao = vizinhoAleatorio[0]
+                if(heuristicaVizinhoAleatorio == 0 ):
+                    break
         else:
             if(uniform(0,1) < exp(-(diferrencaDeCusto / temperaturaAtual))):
-                tabuleiroAtual = vizinhoAleatorio
-                temperaturaAtual = temperaturaAtual * alpha
+                tabuleiroAtual = vizinhoAleatorio[0]
+        temperaturaAtual = temperaturaAtual * alpha
     
-    print("A solução encontrad foi:")
+    print("A solução encontrada foi:")
     print(solucao)
     print("Com a heurística: ")
     print(buscarNumeroDeAtaquesNoTabuleiro(solucao))
-    return solucao
-                
-simuladorProblemaN_RainhasSimulatedAnnealing(4,5000,900,0.01)
-
-#simuladorProblemaN_Rainhas(8)
-
-#buscarNumeroDeAtaquesNoTabuleiro([1,1,3,3,4,3,1,1])
-
-#buscaVizinhoAleatorio([1,1,3,3,4,3,1,1])
-
+    return [solucao, totalDeVizinhosGerados]
